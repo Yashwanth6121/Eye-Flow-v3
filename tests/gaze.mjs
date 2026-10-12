@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {classify,normalizeGaze,fitCalibration,Dwell} from '../logic.mjs';
+// Strong gaze beyond a calibration target must still count as direction.
+assert.equal(classify(.24,[0,-.1,.1]),'down');
+assert.equal(classify(-.3,[0,-.1,.1]),'up');
+assert.equal(classify(-.3,[0,.1,-.1]),'down');
+assert.equal(classify(.01,[0,-.1,.1]),'center');
+assert.equal(classify(.03,[0,-.1,.1],.2),'down');
+assert.equal(classify(.03,[0,-.1,.1],.5),'center');
+assert.equal(normalizeGaze(-.1,[0,-.1,.1]),-1);
+const samples=[0,-1,1].map(n=>Array.from({length:40},(_,i)=>[.001*(i%3),n*.2+.001*(i%3)]));
+assert.equal(fitCalibration(samples).channel,1);
+assert.equal(fitCalibration([0,0,0].map(n=>Array(40).fill([n,n]))),null);
+const d=new Dwell();
+assert.equal(d.update('down',0,800).action,undefined);
+d.update('center',10,800);d.update('center',300,800);d.update('down',400,800);
+d.interrupt(600);d.interrupt(670);
+assert.equal(d.update('down',740,800).action,undefined);
+assert.equal(d.update('down',1300,800).action,undefined);
+assert.equal(d.update('down',1340,800).action,'down');
+assert.equal(d.update('down',3000,800).action,undefined);
+d.update('center',3100,800);d.update('center',3400,800);d.update('down',3500,800);
+d.interrupt(3600);d.interrupt(4000);
+assert.equal(d.update('down',5100,800).action,undefined);
+console.log('PASS: stronger gaze, reversed calibration, sensitivity, alternate signal selection, brief blink, long loss and rearming.');
+
+const {irisVertical,stableDirection}=await import('../logic.mjs');
+const landmarks=[];landmarks[33]={x:.2,y:.4};landmarks[133]={x:.3,y:.4};landmarks[362]={x:.7,y:.4};landmarks[263]={x:.8,y:.4};landmarks[468]={x:.25,y:.42};landmarks[473]={x:.75,y:.42};
+assert.ok(Math.abs(irisVertical(landmarks)-.2)<1e-8);
+landmarks[468].y=.38;landmarks[473].y=.38;assert.ok(Math.abs(irisVertical(landmarks)+.2)<1e-8);
+assert.equal(stableDirection(.35,'down',.4),'down');assert.equal(stableDirection(.2,'down',.4),'center');assert.equal(stableDirection(.35,'center',.4),'center');assert.equal(stableDirection(-.5,'down',.4),'up');
+console.log('PASS: both-eye signal orientation, hysteresis, center release, direction reversal');
