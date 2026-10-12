@@ -1,4 +1,4 @@
-# EyeFlow V2
+# EyeFlow V3
 
 Camera-based directional gaze navigation prototype by Yashwanth Pentakota.
 
