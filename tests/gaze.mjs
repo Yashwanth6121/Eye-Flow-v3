@@ -30,3 +30,16 @@ assert.ok(Math.abs(irisVertical(landmarks)-.2)<1e-8);
 landmarks[468].y=.38;landmarks[473].y=.38;assert.ok(Math.abs(irisVertical(landmarks)+.2)<1e-8);
 assert.equal(stableDirection(.35,'down',.4),'down');assert.equal(stableDirection(.2,'down',.4),'center');assert.equal(stableDirection(.35,'center',.4),'center');assert.equal(stableDirection(-.5,'down',.4),'up');
 console.log('PASS: both-eye signal orientation, hysteresis, center release, direction reversal');
+
+const {fusedGaze,GazeFilter}=await import('../logic.mjs');
+const twoFit={channels:[{channel:0,means:[0,-1,1],quality:10},{channel:1,means:[0,-1,1],quality:10}]};
+assert.equal(fusedGaze([1,1],twoFit),1);assert.equal(fusedGaze([1,-1],twoFit),null);
+assert.equal(fusedGaze([NaN,1],twoFit),null);
+assert.equal(fusedGaze([.5,99],{channel:0,means:[0,-1,1],quality:10}),.5);
+const filter=new GazeFilter();for(let i=0;i<8;i++)filter.update(0,i*65);
+assert.equal(filter.update(2,520),0);assert.equal(filter.update(0,585),0);
+for(let i=10;i<30;i++)filter.update(1,i*65);assert.ok(filter.value>.95);
+filter.reset();assert.equal(filter.update(-1,3000),-1);
+const long=new Dwell();long.update('center',0,20000);long.update('center',300,20000);long.update('down',400,20000);
+assert.equal(long.update('down',20399,20000).action,undefined);assert.equal(long.update('down',20400,20000).action,'down');assert.equal(long.update('down',40400,20000).action,undefined);
+console.log('PASS V3: fusion, disagreement rejection, single-channel fallback, spike filtering, sustained response, 20s dwell');
